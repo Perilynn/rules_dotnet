@@ -126,19 +126,15 @@ def _sdk_build_file(ctx):
 def _detect_host_sdk(ctx):
   mcs = ctx.which("mcs" + bat_extension(ctx))
   if not mcs:
-    defmono = ctx.path("c:/program files/mono/bin")
-    if defmono.exists:
-      mcs = ctx.path("c:/program files/mono/bin/mcs")
-    else:
-      fail("Failed to find mcs")
+    mcs = ctx.path("/Library/Frameworks/Mono.framework/Versions/Current/Commands/mcs")
+  else:
+    fail("Failed to find mcs")
   
   mono = ctx.which("mono" + executable_extension(ctx))
   if not mono:
-    defmono = ctx.path("c:/program files/mono/bin")
-    if defmono.exists:
-      mono = ctx.path("c:/program files/mono/bin/mono.exe")
-    else:
-      fail("Failed to find mono")
+    mono = ctx.path("/Library/Frameworks/Mono.framework/Versions/Current/Commands/mono")
+  else:
+    fail("Failed to find mono")
 
   return (mono, mcs)
 
