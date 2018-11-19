@@ -48,6 +48,10 @@ SDK_REPOSITORIES = {
         "mono_darwin_amd64":      ("http://bazel-mirror.storage.googleapis.com/download.mono-project.com/archive/4.2.3/macos-10-x86/MonoFramework-MDK-4.2.3.4.macos10.xamarin.x86.tar.gz", 
                                 "a7afb92d4a81f17664a040c8f36147e57a46bb3c33314b73ec737ad73608e08b"),
     },
+    "5.10.1": {
+        "mono_darwin_amd64":      ("https://download.mono-project.com/archive/mdk-latest-stable.pkg",
+                                "debf8f09d694290aea7f74700a6c7528319b196400ad2d3704386bc093deb4da"),
+    },
 }
 
 CORE_SDK_REPOSITORIES = {
