@@ -29,10 +29,11 @@ The intent is that theses rules are sufficient to match the capabilities of the 
 API
 ---
 
-dotnet_library
-~~~~~~~~~~~~~~
+dotnet_library, core_library, net_library
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This builds a dotnet assembly from a set of source files.
+This builds a dotnet assembly from a set of source files. The rule generates assebly respectively
+for Mono, .NET Core and .NET.
 
 Providers
 ^^^^^^^^^
@@ -76,6 +77,10 @@ Attributes
 | :param:`unsafe`            | :type:`bool`                | :value:`False`                        |
 +----------------------------+-----------------------------+---------------------------------------+
 | If true passes /unsafe flag to the compiler                                                      |
++----------------------------+-----------------------------+---------------------------------------+
+| :param:`data`              | :type:`label_list`          | :value:`None`                         |
++----------------------------+-----------------------------+---------------------------------------+
+| The list of additional files to include in the list of runfiles for compile assembly             |
 +----------------------------+-----------------------------+---------------------------------------+
 
 Example
@@ -96,12 +101,13 @@ Example
       visibility = ["//visibility:public"],
   )
 
-dotnet_binary
-~~~~~~~~~~~~~
+dotnet_binary, net_binary, core_binary
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This builds an executable from a set of source files.
+This builds an executable from a set of source files (respectively for Mono, .NET and .NET Core).
 You can run the binary with ``bazel run``, or you can
 build it with ``bazel build`` and run it directly.
+
 
 Providers
 ^^^^^^^^^
@@ -145,6 +151,10 @@ Attributes
 | :param:`unsafe`            | :type:`bool`                | :value:`False`                        |
 +----------------------------+-----------------------------+---------------------------------------+
 | If true passes /unsafe flag to the compiler                                                      |
++----------------------------+-----------------------------+---------------------------------------+
+| :param:`data`              | :type:`label_list`          | :value:`None`                         |
++----------------------------+-----------------------------+---------------------------------------+
+| The list of additional files to be included as runfiles for the generated executable             |
 +----------------------------+-----------------------------+---------------------------------------+
 
 Example
@@ -279,8 +289,8 @@ Example
     )
 
 
-dotnet_import_library
-~~~~~~~~~~~~~~~~~~~~~
+dotnet_import_library, core_import_library, net_import_library, dotnet_import_binary, core_import_binary, net_import_binary
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This imports an external dll and transforms it into DotnetLibrary_ so it can be referenced
 as dependency by other rules. Often used with dotnet_nuget_new_. 

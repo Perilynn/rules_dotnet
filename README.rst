@@ -63,13 +63,13 @@ Caveats
 These rules are not compatible with sandboxing_. Particularly, running dotnet rules on linux o macos
 requires passing --spawn_strategy=standalone.
 
-_Bazel creates long paths. Therefore it is recommended to increase the length limit using newer version of Windows.
+Bazel_ creates long paths. Therefore it is recommended to increase the length limit using newer version of Windows.
 Please see `here <https://docs.microsoft.com/en-us/windows/desktop/fileio/naming-a-file#maximum-path-length-limitation>`_.
 
 However, some Windows programs do not handle long path names. Most notably - Microsoft cl compiler. Therefore TMP env variable should be
 set to something short (like X:\\ or c:\\TEMP). 
 
-_Bazel and dotnet rules rely on symbolic linking. On Windows it, typically, requires elevated permissions. However, newer versions of Windows
+Bazel_ and dotnet rules rely on symbolic linking. On Windows it, typically, requires elevated permissions. However, newer versions of Windows
 hava a `workaround <https://blogs.windows.com/buildingapps/2016/12/02/symlinks-windows-10/#IJuxPHWEkSSRqC7w.97>`_.
 
 NUnit v2 runner used in some tests requires .NET Framework 3.5 installation.
@@ -84,8 +84,8 @@ Setup
     # A newer version should be fine
     git_repository(
         name = "io_bazel_rules_dotnet",
-        remote = "https://github.com/tomek1909/rules_dotnet",
-        tag = "0.0.1",
+        remote = "https://github.com/bazelbuild/rules_dotnet",
+        tag = "0.0.2",
     )
 
     load("@io_bazel_rules_dotnet//dotnet:defs.bzl", "dotnet_register_toolchains", "dotnet_repositories")

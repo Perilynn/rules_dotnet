@@ -20,8 +20,7 @@ load(
     "paths",
 )
 
-load("@io_bazel_rules_dotnet//dotnet/private:actions/binary.bzl", "emit_binary")
-load("@io_bazel_rules_dotnet//dotnet/private:actions/library.bzl", "emit_library")
+load("@io_bazel_rules_dotnet//dotnet/private:actions/assembly.bzl", "emit_assembly")
 load("@io_bazel_rules_dotnet//dotnet/private:actions/resx.bzl", "emit_resx")
 
 def _get_dotnet_runner(context_data, ext):
@@ -76,6 +75,18 @@ def _get_dotnet_stdlib(context_data):
     return f
   fail("Could not find mscorlib in dotnet_sdk (lib, %s)" % context_data._libVersion)
 
+def _get_dotnet_stdlib_byname(shared, lib, libVersion, name):
+  lname = name.lower()
+  for f in lib.files:
+    basename = paths.basename(f.path)
+    if basename.lower() != lname:
+      continue
+    dirname = paths.dirname(f.path)
+    if dirname.find(libVersion)==-1:
+      continue
+    return f
+  fail("Could not find %s in dotnet_sdk (lib)" % name)
+
 def _dotnet_toolchain_impl(ctx):
   return [platform_common.ToolchainInfo(
       name = ctx.label.name,
@@ -88,10 +99,10 @@ def _dotnet_toolchain_impl(ctx):
       get_dotnet_tlbimp = _get_dotnet_tlbimp,
       get_dotnet_stdlib = _get_dotnet_stdlib,
       actions = struct(
-          binary = emit_binary,
-          library = emit_library,
+          assembly = emit_assembly,
           resx = emit_resx,
-          com_ref = None
+          com_ref = None,
+          stdlib_byname = _get_dotnet_stdlib_byname,
       ),
       flags = struct(
           compile = (),

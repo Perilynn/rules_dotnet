@@ -1,6 +1,5 @@
 load("@io_bazel_rules_dotnet//dotnet/private:common.bzl", "env_execute")
 load("@io_bazel_rules_dotnet//dotnet:defs.bzl", "dotnet_context")
-load("@io_bazel_rules_dotnet//dotnet/private:rules/launcher_gen.bzl", "dotnet_launcher_gen")
 
 
 # _bazelrc is the bazel.rc file that sets the default options for tests
@@ -37,7 +36,20 @@ filegroup(
 
 # _bazel_test_script_template is the template for the bazel invocation script
 _bazel_test_script_template = """
-set -u
+echo "Executing $0"
+
+export PATH=/usr/bin:/bin:$PATH
+
+if [[ -f "$0.runfiles/MANIFEST" ]]; then
+export RUNFILES_MANIFEST_FILE="$0.runfiles/MANIFEST"
+elif [[ -f "$0.runfiles_manifest" ]]; then
+export RUNFILES_MANIFEST_FILE="$0.runfiles_manifest"
+elif [[ -n "$RUNFILES_DIR" ]]; then
+export RUNFILES_MANIFEST_FILE="$RUNFILES_DIR/MANIFEST"
+fi
+
+echo "Using for MANIFEST $RUNFILES_MANIFEST_FILE"
+DIR=$(dirname $RUNFILES_MANIFEST_FILE)
 
 echo pwd is `pwd`
 echo command is {command}
@@ -48,14 +60,19 @@ RULES_DOTNET_OUTPUT={output}
 mkdir -p {work_dir}
 mkdir -p {cache_dir}
 # Link files according to manifest
-../../{test_prep}
-cp -f {workspace} {work_dir}/WORKSPACE
-cp -f {build} {work_dir}/BUILD.bazel
+
+PREPARE=`awk '{{if ($1 ~ "{test_prep}") {{print $2;exit}} }}' $RUNFILES_MANIFEST_FILE`
+$PREPARE $RUNFILES_MANIFEST_FILE
+
+cp -f $DIR/{workspace} {work_dir}/WORKSPACE
+cp -f $DIR/{build} {work_dir}/BUILD.bazel
 {copy_srcs}
 cd {work_dir}
 
 {bazel} --bazelrc {bazelrc} {command} --config {config} {args} {target} >& bazel-output.txt
 result=$?
+
+echo "Result $result"
 
 function at_exit {{
   echo "bazel exited with status $result"
@@ -200,11 +217,11 @@ def _bazel_test_script_impl(ctx):
   copy_srcs = ""
   for s in ctx.attr.srcs:
     p = s.files.to_list()[0]
-    copy_srcs += "cp -f {} {}/{};".format(p.short_path, ctx.attr._settings.scratch_dir + "/" + ctx.attr.config, p.basename)
+    copy_srcs += "cp -f $DIR/{} {}/{};".format(p.basename, ctx.attr._settings.scratch_dir + "/" + ctx.attr.config, p.basename)
 
 
   script_content = _bazel_test_script_template.format(
-      test_prep = ctx.attr.test_prep,
+      test_prep = ctx.attr._manifest_prep.files.to_list()[0].basename,
       bazelrc = ctx.attr._settings.exec_root+"/"+ctx.file._bazelrc.path,
       config = ctx.attr.config,
       command = ctx.attr.command,
@@ -212,8 +229,8 @@ def _bazel_test_script_impl(ctx):
       target = " ".join(targets),
       logs = " ".join(logs),
       check = ctx.attr.check,
-      workspace = workspace_file.short_path,
-      build = build_file.short_path,
+      workspace = workspace_file.basename,
+      build = build_file.basename,
       output = output,
       bazel = ctx.attr._settings.bazel,
       work_dir = ctx.attr._settings.scratch_dir + "/" + ctx.attr.config,
@@ -222,7 +239,7 @@ def _bazel_test_script_impl(ctx):
   )
   ctx.actions.write(output=script_file, is_executable=True, content=script_content)
 
-  runfiles = depset(direct = [workspace_file, build_file], transitive = [f.files for f in ctx.attr.srcs])
+  runfiles = depset(direct = [workspace_file, build_file] + ctx.attr._manifest_prep.files.to_list(), transitive = [f.files for f in ctx.attr.srcs])
   return struct(
       files = depset([script_file]),
       runfiles = ctx.runfiles(runfiles.to_list(), collect_data=True)
@@ -250,7 +267,6 @@ _bazel_test_script = rule(
         "build_in": attr.label(allow_files = True),
         "srcs": attr.label_list(allow_files = True),
         "check": attr.string(),
-        "test_prep": attr.string(),
         "config": attr.string(default = "isolate"),
         "data": attr.label_list(
             allow_files = True,
@@ -261,6 +277,7 @@ _bazel_test_script = rule(
             single_file = True,
             default = "@bazel_test//:bazelrc",
         ),
+        "_manifest_prep": attr.label(default = Label("//dotnet/tools/manifest_prep")),
         "_settings": attr.label(default = Label("@bazel_test//:settings")),
         "_dotnet_context_data": attr.label(default = Label("@io_bazel_rules_dotnet//:dotnet_context_data")),
     },
@@ -289,17 +306,7 @@ def bazel_test(name, command = None, args=None, targets = None, dotnet_version =
       config = config,
       workspace_in = workspace_in,
       build_in = build_in,
-      test_prep = name + "_test_prep",
       srcs = srcs
-  )
-
-  dotnet_launcher_gen(name = "%s_test_prep_gen" % name, exe = script_name)
-  
-  native.cc_binary(
-      name=name + "_test_prep", 
-      srcs = [":%s_test_prep_gen" % name],
-      deps = ["@io_bazel_rules_dotnet//dotnet/tools/test_prep", "@io_bazel_rules_dotnet//dotnet/tools/common"],
-      data = [script_name],
   )
 
   native.sh_test(

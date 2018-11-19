@@ -84,6 +84,9 @@ _FUNC = """
     src = "{}",
     deps = [
         {}
+    ],
+    data = [
+        {}
     ]
 )
 
@@ -94,12 +97,16 @@ def _get_importlib(func, name, lib, deps, files):
     depsstr = ""
     for d in deps:
         depsstr += "    \"{}\",\n".format(d)
-    result = _FUNC.format(func, name, lib, depsstr)
+    datastr = ""
+    for f in files:
+        datastr += "    \"{}\",\n".format(f)
+
+    result = _FUNC.format(func, name, lib, depsstr, datastr)
     return result
 
 _TEMPLATE2 = """
 package(default_visibility = [ "//visibility:public" ])
-load("@io_bazel_rules_dotnet//dotnet:defs.bzl", "dotnet_import_library", "core_import_library", "net_import_library")
+load("@io_bazel_rules_dotnet//dotnet:defs.bzl", "dotnet_import_library", "core_import_library", "net_import_library", "core_import_binary", "net_import_binary")
 """
 
 def _nuget_package_impl(ctx):
@@ -112,6 +119,13 @@ def _nuget_package_impl(ctx):
         content += _get_importlib("net_import_library", "net", ctx.attr.net_lib, ctx.attr.net_deps, ctx.attr.net_files)
     if ctx.attr.mono_lib != "":
         content += _get_importlib("dotnet_import_library", "mono", ctx.attr.mono_lib, ctx.attr.mono_deps, ctx.attr.mono_files)
+
+    if ctx.attr.core_tool != "":
+        content += _get_importlib("core_import_binary", "core_tool", ctx.attr.core_tool, ctx.attr.core_deps, ctx.attr.core_files)
+    if ctx.attr.net_tool != "":
+        content += _get_importlib("net_import_binary", "net_tool", ctx.attr.net_tool, ctx.attr.net_deps, ctx.attr.net_files)
+    if ctx.attr.mono_tool != "":
+        content += _get_importlib("dotnet_import_library", "mono_tool", ctx.attr.mono_tool, ctx.attr.mono_deps, ctx.attr.mono_files)
 
     package = ctx.attr.package
     output_dir = ctx.path("")
@@ -131,9 +145,12 @@ _nuget_package_attrs = {
     # The version of the nuget package
     "version": attr.string(mandatory=True),
     "sha256": attr.string(mandatory=False),
-    "core_lib": attr.string(mandatory=True),
-    "net_lib": attr.string(mandatory=True),
-    "mono_lib": attr.string(mandatory=True),
+    "core_lib": attr.string(default=""),
+    "net_lib": attr.string(default=""),
+    "mono_lib": attr.string(default=""),
+    "core_tool": attr.string(default=""),
+    "net_tool": attr.string(default=""),
+    "mono_tool": attr.string(default=""),
     "core_deps": attr.label_list(providers=[DotnetLibrary]),
     "net_deps": attr.label_list(providers=[DotnetLibrary]),
     "mono_deps": attr.label_list(providers=[DotnetLibrary]),

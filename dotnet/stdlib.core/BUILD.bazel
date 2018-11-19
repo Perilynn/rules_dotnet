@@ -1,6 +1,6 @@
 package(default_visibility = [ "//visibility:public" ])
 
-load("@io_bazel_rules_dotnet//dotnet/private:rules/stdlib_core.bzl", "core_stdlib")
+load("@io_bazel_rules_dotnet//dotnet/private:rules/stdlib.bzl", "core_stdlib")
 
 core_stdlib(name = "system.private.corelib.dll")
 
@@ -1110,6 +1110,7 @@ core_stdlib(name = "system.runtime.compilerservices.visualc.dll", deps = [
 core_stdlib(name = "system.runtime.dll", deps = [
       ":system.private.corelib.dll",
       ":system.private.uri.dll",
+      ":system.runtime.loader.dll",
     ]
 )
 core_stdlib(name = "system.runtime.extensions.dll", deps = [

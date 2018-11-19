@@ -1,7 +1,7 @@
 package(default_visibility = ["//visibility:public"])
 
-cc_library(
-  name = "runner",
+cc_binary(
+  name = "manifest_prep",
   srcs = glob([
     "*.c",
   ]),

@@ -76,6 +76,20 @@ static void CreateLinkIfNeeded(const char* target, const char *toCreate)
         exit(-1);			
     }
 
+    /* Try hard linking first (except mono.exe) */
+    /*
+    if (strstr(toCreate, "mono.exe")==NULL) 
+    {
+        result = CreateHardLink(toCreate, target, NULL);
+        if (result)
+            return;
+        error = GetLastError();
+        if (error == ERROR_ALREADY_EXISTS) 
+            return;
+    }
+    */
+   
+    /* Fall back to symbolic linking */
     flag = SYMBOLIC_LINK_FLAG_ALLOW_UNPRIVILEGED_CREATE;
     retry:
     result = CreateSymbolicLinkA(toCreate, target, flag);
@@ -88,6 +102,13 @@ static void CreateLinkIfNeeded(const char* target, const char *toCreate)
         }
         if (error != ERROR_ALREADY_EXISTS) {
             printf("Error %d on linking %s to %s\n", error, toCreate, target);
+            /* For uknown to me reasons, sometimes the link function failes even if long paths are enabled. */
+            if (error==ERROR_PATH_NOT_FOUND && PathFileExistsA(target))
+            {
+                printf("Target file %s does exists. Ignoring error. \n", target);
+                return;
+            }
+
             exit(-1);
         }
     }
@@ -96,14 +117,33 @@ static void CreateLinkIfNeeded(const char* target, const char *toCreate)
 static void CreateLinkIfNeeded(const char* target, const char *toCreate) 
 {
     int result;
+    char *p;
+
     if (access(target, F_OK)==-1) {
         printf("File %s does not exist\n", target);
         exit(-1);			
     }
 
-    result = symlink(target, toCreate);
+    p = strrchr(toCreate, '/');
+    if (p==NULL) {
+        printf("Error on linking %s to %s. toCreate doesn't contain '/'\n", toCreate, target);
+        exit(-1);
+    }
+
+    if (strcmp(p, "/mono")==0 || strcmp(p, "/dotnet")==0) 
+        result = symlink(target, toCreate);
+    else
+        result = link(target, toCreate);
     if (result!=0) {
         int error = errno;
+        if (error == EEXIST)
+            return;
+        if (error == EPERM) {
+            result = symlink(target, toCreate);
+            if (result==0)
+                return;
+            error = errno;
+        }
         if (error != EEXIST) {
             printf("Error %d on linking %s to %s\n", error, toCreate, target);
             exit(-1);
@@ -135,7 +175,8 @@ void LinkFiles(const char *manifestDir) {
 typedef struct _stat Stat;
 static void do_mkdir(const char *path)
 {
-    Stat            st;
+    Stat  st;
+    DWORD error;
 
     if (access(path, F_OK) == 0) {
         return;
@@ -143,7 +184,10 @@ static void do_mkdir(const char *path)
 
     /* Directory does not exist. EEXIST for race condition */
     if (CreateDirectoryA(path, NULL) == 0) {
-        printf("Error %d creating directory for %s\n", GetLastError(), path);
+        error = GetLastError();
+        if (error == ERROR_ALREADY_EXISTS) 
+            return;
+        printf("Error %d creating directory for %s\n", error, path);
         exit(-1);        
     }
 }
@@ -243,12 +287,24 @@ void LinkFilesTree(const char *manifestDir) {
 const char *GetManifestDir() {
 	static char buffer[64*1024];
 	char *p;
+
+	strcpy(buffer, Exe);
+    printf("Checking MANIFEST in %s\n", buffer);
+	if (access(buffer, F_OK)!=-1) {
+		p = strrchr(buffer, '/');
+		*(p+1) = '\0';
+    
+		return buffer;
+	}
+
 	p = getcwd(buffer, sizeof(buffer));
+    printf("Checking MANIFEST in %s\n", buffer);
 	if (access("MANIFEST", F_OK)!=-1)
 		return buffer;
 
 
 	strcat(buffer, "/../MANIFEST");
+    printf("Checking MANIFEST in %s\n", buffer);
 	if (access(buffer, F_OK)!=-1) {
 		p = strrchr(buffer, '/');
 		*(p+1) = '\0';
@@ -269,13 +325,24 @@ const char *GetManifestDir() {
 	#endif	
     
 	strcat(buffer, ".runfiles/MANIFEST");
-	printf("Checking %s\n", buffer);
+    printf("Checking MANIFEST in %s\n", buffer);
 	if (access(buffer, F_OK)!=-1) {
 		p = strrchr(buffer, '/');
 		*(p+1) = '\0';
 		return buffer;
 	}
-	
+
+	p = getcwd(buffer, sizeof(buffer));
+	strcat(buffer, "/");
+	strcat(buffer, Exe);
+	strcat(buffer, ".runfiles/MANIFEST");
+    printf("Checking MANIFEST in %s\n", buffer);
+	if (access(buffer, F_OK)!=-1) {
+		p = strrchr(buffer, '/');
+		*(p+1) = '\0';
+		return buffer;
+	}
+
 	printf("Couldn't find MANIFEST file\n");
 	exit(-1);
 }
@@ -294,8 +361,7 @@ void LinkHostFxr(const char *manifestDir)
 	}
 
     if (q == NULL) {
-        printf("Couldn't find host/fxr/ entry in the MANIFEST\n");
-        exit(-1);
+        return;       
     }
 
 

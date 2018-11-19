@@ -16,20 +16,21 @@
 
 #include "dotnet/tools/common/manifest.h"
 
-extern const char * Exe;
+const char * Exe = NULL;
 
+/* One argument is expected: path to the launcher (to locate the manifest file) */
 int main(int argc, char *argv[], char *envp[])
 {
-	const char *manifestDir;
-	printf("Test prep running %s)\n", Exe);
-	if (strlen(Exe) > 32*1024) {
-		printf("File path %s too long\n", Exe);
-		return -1;
-	}
+	FILE *f;
+	const char *manifestDir, *outFile;
+
+	Exe = argv[1];
+	outFile = argv[2];
 
 	manifestDir = GetManifestDir();
 	ReadManifest(manifestDir);
+	LinkFiles(manifestDir);
 	LinkFilesTree(manifestDir);
-
+	LinkHostFxr(manifestDir);
 	return 0;
 }
