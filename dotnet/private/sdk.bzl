@@ -29,7 +29,9 @@ def _dotnet_host_sdk_impl_linux(ctx):
     fail("Can't find mono in /usr/lib/mono/")
   ctx.symlink(monoroot, "lib")
   bin = paths.join("{}".format(monoroot), "4.5")
+  print(bin)
   ctx.symlink(bin, "mcs_bin")
+  print(ctx.bin)
 
 def _dotnet_host_sdk_impl_osx(ctx):
   mono, mcs = _detect_host_sdk(ctx)
