@@ -31,6 +31,7 @@ def _get_dotnet_runner(context_data, ext):
 def _get_dotnet_mcs(context_data):
   for f in context_data._mcs_bin.files:
     basename = paths.basename(f.path)
+    print(basename)
     if basename != "csc.exe":
       continue
     return f
